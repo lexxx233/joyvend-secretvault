@@ -4,7 +4,8 @@
 
 ### Your secrets, sealed on the stick — so an agent can act as you without ever seeing your keys.
 
-**Status: vision / design.** No code yet — this repo holds the design while the
+**Status: design, no code yet** — the architecture is settled in **[DESIGN.md](./DESIGN.md)** and
+the threat model in **[SECURITY.md](./SECURITY.md)**, while the
 [Memory Capsule](https://github.com/lexxx233/JoyVend-memory-capsule) (component #1) ships.
 
 [joyvend.io](https://joyvend.io) · **Personal · Private · Portable**
