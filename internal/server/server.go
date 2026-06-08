@@ -68,6 +68,11 @@ func (s *Server) Engine() *vault.Engine { return s.engine }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
+	// Friendly root + health so a browser visit isn't a bare 404 (there's no GUI
+	// yet — this is an API). Neither reveals a token.
+	mux.HandleFunc("GET /{$}", s.handleRoot)
+	mux.HandleFunc("GET /healthz", s.handleHealth)
+
 	// USE plane: loopback-only unless LAN enabled; always requires the use token.
 	use := http.NewServeMux()
 	use.HandleFunc("POST /v1/vault/fetch", s.handleFetch)
@@ -91,6 +96,40 @@ func (s *Server) Handler() http.Handler {
 
 	return mux
 }
+
+// --- root / health (no auth, no secrets) ---
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, 200, map[string]any{
+		"ok":      true,
+		"service": "secretvault",
+		"planes":  []string{"/v1/vault (agent)", "/api/vault (control, loopback-only)"},
+		"lan":     s.opt.EnableLAN,
+	})
+}
+
+func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(rootHTML))
+}
+
+const rootHTML = `<!doctype html><html><head><meta charset="utf-8">
+<title>SecretVault</title><style>
+body{font-family:system-ui,sans-serif;max-width:42rem;margin:4rem auto;padding:0 1rem;line-height:1.6;color:#1c2833}
+code{background:#eef;padding:.1em .35em;border-radius:3px}h1{margin-bottom:.2em}.muted{color:#667}
+</style></head><body>
+<h1>🔐 SecretVault</h1>
+<p class="muted">Running. This is a local <strong>API</strong>, not a web app — there is no GUI yet,
+so visiting a path in the browser will 404. That's expected.</p>
+<ul>
+<li><code>POST /v1/vault/fetch</code> — the agent acts by reference (needs the <em>use</em> token).</li>
+<li><code>GET&nbsp; /v1/vault/credentials</code> — credential metadata (no secrets).</li>
+<li><code>/api/vault/*</code> — credential create/enable/approve/audit (loopback-only, <em>control</em> token).</li>
+<li><code>GET&nbsp; /healthz</code> — JSON status.</li>
+</ul>
+<p class="muted">Both tokens were printed in the terminal at launch. Manage credentials with, e.g.:<br>
+<code>curl -H "X-Vault-Token: $CONTROL_TOKEN" .../api/vault/credentials</code></p>
+</body></html>`
 
 // --- use plane handlers ---
 

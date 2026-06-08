@@ -40,6 +40,25 @@ func do(h http.Handler, method, path, token, remote, body string) *httptest.Resp
 	return w
 }
 
+func TestRootAndHealthAndNotFound(t *testing.T) {
+	s := newServer(t, Options{})
+	h := s.Handler()
+	if w := do(h, "GET", "/", "", "127.0.0.1:1", ""); w.Code != 200 {
+		t.Fatalf("GET / => %d, want 200", w.Code)
+	}
+	w := do(h, "GET", "/healthz", "", "127.0.0.1:1", "")
+	if w.Code != 200 {
+		t.Fatalf("GET /healthz => %d, want 200", w.Code)
+	}
+	// health must not leak either token
+	if bytes.Contains(w.Body.Bytes(), []byte(s.ControlToken())) || bytes.Contains(w.Body.Bytes(), []byte(s.UseToken())) {
+		t.Fatal("health response leaked a token")
+	}
+	if w := do(h, "GET", "/nope", "", "127.0.0.1:1", ""); w.Code != 404 {
+		t.Fatalf("GET /nope => %d, want 404", w.Code)
+	}
+}
+
 func TestControlPlaneRejectsNonLoopback(t *testing.T) {
 	s := newServer(t, Options{})
 	h := s.Handler()
