@@ -1,21 +1,21 @@
 <div align="center">
 
-# 🔐 joyvend · SecretVault
+# 🔐 mykeep · SecretVault
 
 ### Your secrets, sealed on the stick — so an agent can act as you without ever seeing your keys.
 
 **Status: v1 implemented + tested** — pure-Go library, HTTP server, a **local GUI** (unlock + add
-secrets in the browser), and a CLI. Integration into the one joyvend binary + OAuth come next.
+secrets in the browser), and a CLI. Integration into the one mykeep binary + OAuth come next.
 Architecture in **[DESIGN.md](./DESIGN.md)**, threat model in **[SECURITY.md](./SECURITY.md)**.
-Sibling: the [Memory Capsule](https://github.com/lexxx233/JoyVend-memory-capsule) (component #1).
+Sibling: the [Memory Capsule](https://github.com/lexxx233/mykeep-memory-capsule) (component #1).
 
-[joyvend.io](https://joyvend.io) · **Personal · Private · Portable**
+[mykeep.ai](https://mykeep.ai) · **Personal · Private · Portable**
 
 </div>
 
 ---
 
-SecretVault is the **"act as you"** component of [joyvend](https://joyvend.io) — a portable
+SecretVault is the **"act as you"** component of [mykeep](https://mykeep.ai) — a portable
 suite of local capabilities any AI agent can plug into, all on a USB stick. It holds your API
 keys and secrets, encrypted on the stick, so your agent can take authenticated actions on your
 behalf — call services, deploy, send mail — without your credentials ever touching the cloud
@@ -56,13 +56,13 @@ policy:
 
 ## How an agent uses it
 
-The same shape as the rest of joyvend: a **loopback REST API + a pasted guide** — the
+The same shape as the rest of mykeep: a **loopback REST API + a pasted guide** — the
 zero-install floor that works with any agent that can make an HTTP call. No client config, no
 plugin. SecretVault is REST-native because it *is* an HTTP proxy.
 
 ## Where it fits
 
-- **[Memory Capsule](https://github.com/lexxx233/JoyVend-memory-capsule)** — *knows* you.
+- **[Memory Capsule](https://github.com/lexxx233/mykeep-memory-capsule)** — *knows* you.
 - **Foundry** — lets the agent *do* more; its tools request scoped credentials from SecretVault
   by reference.
 - **SecretVault** — lets the agent *act as* you, safely.
@@ -86,7 +86,7 @@ Run it:
   credentials, approve writes, and read the audit log. The GUI authenticates by the unlock password
   → a loopback session cookie, so a co-resident agent (no password) can't reach the control plane.
   It shows the **use** token to paste into your agent.
-- **`secretvault serve`** is headless: unlock at launch (`JOYVEND_VAULT_PASSPHRASE` or stdin), serve
+- **`secretvault serve`** is headless: unlock at launch (`MYKEEP_VAULT_PASSPHRASE` or stdin), serve
   the API only, print both tokens. `--lan` exposes *only* the use plane on the network; `--idle` sets
   the auto-lock minutes.
 
@@ -105,11 +105,11 @@ cmd/secretvault   the runnable broker (gui | serve)
   plaintext secret into the model's context.
 - **Scoped, gated, audited** — allowlist + approval + log, by default.
 - **Portable & private** — pure Go, zero CGo, one binary; sealed at rest; no cloud.
-- **The agent reasons, joyvend provides** — SecretVault brokers and records; it does no LLM
+- **The agent reasons, mykeep provides** — SecretVault brokers and records; it does no LLM
   reasoning of its own.
 
 ---
 
 <div align="center">
-<sub>A component of <a href="https://joyvend.io">joyvend</a> · Personal · Private · Portable · © 2026 Domu Inc</sub>
+<sub>A component of <a href="https://mykeep.ai">mykeep</a> · Personal · Private · Portable · © 2026 Domu Inc</sub>
 </div>

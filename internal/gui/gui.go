@@ -19,9 +19,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lexxx233/joyvend-secretvault/internal/secret"
-	"github.com/lexxx233/joyvend-secretvault/internal/server"
-	"github.com/lexxx233/joyvend-secretvault/internal/vault"
+	"mykeep.ai/secretvault/internal/secret"
+	"mykeep.ai/secretvault/internal/server"
+	"mykeep.ai/secretvault/internal/vault"
 )
 
 //go:embed web/index.html

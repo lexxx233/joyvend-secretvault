@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lexxx233/joyvend-secretvault/internal/secret"
+	"mykeep.ai/secretvault/internal/secret"
 )
 
 // ErrNotFound is returned when a credential name is unknown.

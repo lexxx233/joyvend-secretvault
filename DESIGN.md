@@ -2,7 +2,7 @@
 
 > **Status: design, no code yet.** This document is the settled architecture for the v1 build.
 > It is the source of truth for the decisions below; `SECURITY.md` holds the threat model.
-> Part of [joyvend](https://joyvend.io) — see the [README](./README.md).
+> Part of [mykeep](https://mykeep.ai) — see the [README](./README.md).
 
 SecretVault lets an AI agent take authenticated actions **as you** without ever seeing your
 credentials. It is an **authenticated-egress broker**: the agent makes a request *by reference*
@@ -10,7 +10,7 @@ credentials. It is an **authenticated-egress broker**: the agent makes a request
 server-side, forwards the request, and returns only the response. The raw secret never enters the
 agent's context, the transcript, or the model provider.
 
-It ships as a **module inside the one joyvend binary**, reusing the Memory Capsule's substrate:
+It ships as a **module inside the one mykeep binary**, reusing the Memory Capsule's substrate:
 the argon2id-KEK→DEK key hierarchy, AES-256-GCM sealing, the debounced off-lock re-seal, the
 single-instance lock, and the one-password unlock. One unlock arms memory *and* secrets.
 
@@ -22,7 +22,7 @@ Secrets are a tiny dataset (dozens of credentials, not millions of rows), so Sec
 use SQLite. It uses one sealed JSON file beside the memory DB:
 
 ```
-joyvend_kb/vault.json.enc        ← one AES-256-GCM blob, sealed under the same DEK
+mykeep_kb/vault.json.enc        ← one AES-256-GCM blob, sealed under the same DEK
 ```
 
 - Decrypted into an in-RAM struct **at launch** (same lifecycle as the memory server), re-sealed
@@ -82,7 +82,7 @@ The whole suite is loopback-only by default; LAN exposure is an explicit, per-la
 
 - **Default, every launch:** loopback-only. No network surface.
 - **GUI launch toggle (default OFF, per session):** *"Allow other devices on my network to use
-  joyvend."* When on, the **use plane** binds to the LAN interface behind a **mandatory token**,
+  mykeep."* When on, the **use plane** binds to the LAN interface behind a **mandatory token**,
   with a plaintext-traffic warning.
 - **The control plane stays loopback-only — always, even in LAN mode.** Secret creation and the
   write-approval prompts never travel the wire.
@@ -137,7 +137,7 @@ Every call runs the same enforced pipeline, in order:
 3. **Allowlist** — host matches the credential's `allow_hosts` via **label-aware** glob
    (`*.x.com` matches one-or-more leading labels of `x.com`, never substring/suffix).
 4. **Resolve-then-pin** — `LookupIP` once; deny loopback, link-local, `169.254/16` metadata, and
-   the joyvend host's own address always; deny RFC1918/CGNAT unless the credential's allowlist
+   the mykeep host's own address always; deny RFC1918/CGNAT unless the credential's allowlist
    explicitly names the private host; **pin** a surviving IP and `DialContext` to it with the
    original Host/SNI; the transport never re-resolves (anti-rebinding/TOCTOU).
 5. **Tier** — method → `read` (GET/HEAD, auto) / `write` (mutating, **blocks** for a human confirm
@@ -176,7 +176,7 @@ Append-only entries live in the same `vault.json.enc`, **hash-chained** (`row_ha
 H(prev_hash || fields)`) so truncation or reordering is detectable on top of the whole-file AEAD
 seal. Each row records timestamp, credential name, method, host, decision/tier, status, response
 bytes, latency, and **source address** — never the secret and never the response body. It is
-**human-only**, read via the GUI / `joyvend vault audit`; it is not on the agent plane. Retention is
+**human-only**, read via the GUI / `mykeep vault audit`; it is not on the agent plane. Retention is
 user-managed (a GUI "clear entries older than N"), not automatic.
 
 ---

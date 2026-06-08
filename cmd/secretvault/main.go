@@ -21,9 +21,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lexxx233/joyvend-secretvault/internal/gui"
-	"github.com/lexxx233/joyvend-secretvault/internal/server"
-	"github.com/lexxx233/joyvend-secretvault/internal/vault"
+	"mykeep.ai/secretvault/internal/gui"
+	"mykeep.ai/secretvault/internal/server"
+	"mykeep.ai/secretvault/internal/vault"
 )
 
 func main() {
@@ -50,7 +50,7 @@ func main() {
 
 func runGUI(args []string) error {
 	fs := flag.NewFlagSet("gui", flag.ExitOnError)
-	path := fs.String("vault", "joyvend_kb/vault.json.enc", "path to the encrypted vault file")
+	path := fs.String("vault", "mykeep_kb/vault.json.enc", "path to the encrypted vault file")
 	addr := fs.String("addr", "127.0.0.1:8770", "loopback listen address")
 	fs.Parse(args)
 	if err := os.MkdirAll(dir(*path), 0o700); err != nil {
@@ -64,7 +64,7 @@ func runGUI(args []string) error {
 
 func runServe(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	path := fs.String("vault", "joyvend_kb/vault.json.enc", "path to the encrypted vault file")
+	path := fs.String("vault", "mykeep_kb/vault.json.enc", "path to the encrypted vault file")
 	addr := fs.String("addr", "127.0.0.1:8770", "listen address")
 	lan := fs.Bool("lan", false, "expose the USE plane on the LAN (control plane stays loopback)")
 	idleMin := fs.Int("idle", 15, "idle minutes before auto-lock (0 disables)")
@@ -139,7 +139,7 @@ func touch(l *vault.IdleLock, next http.Handler) http.Handler {
 }
 
 func passphrase() []byte {
-	if v := os.Getenv("JOYVEND_VAULT_PASSPHRASE"); v != "" {
+	if v := os.Getenv("MYKEEP_VAULT_PASSPHRASE"); v != "" {
 		return []byte(v)
 	}
 	fmt.Fprint(os.Stderr, "Vault passphrase: ")

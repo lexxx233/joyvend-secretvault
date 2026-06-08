@@ -1,7 +1,7 @@
 # SecretVault — Security Model & Threat Model
 
 > **Status: design, no code yet.** This is the threat model the v1 build is designed against.
-> See [`DESIGN.md`](./DESIGN.md) for the architecture. Part of [joyvend](https://joyvend.io).
+> See [`DESIGN.md`](./DESIGN.md) for the architecture. Part of [mykeep](https://mykeep.ai).
 
 ## The honest promise
 
@@ -25,7 +25,7 @@ The primary adversary is a **prompt-injected or confused agent inside the trust 
 holds the use-plane token and can call `/v1/vault/fetch` with attacker-influenced `url`, `headers`,
 and `body`. A secondary adversary (only in opt-in LAN mode) is **another device on your network**.
 We do **not** defend against an attacker who already has your password, your unlocked drive, or code
-execution able to read joyvend's process memory — at that point it is game over by construction.
+execution able to read mykeep's process memory — at that point it is game over by construction.
 
 ## The two load-bearing controls
 
@@ -45,8 +45,8 @@ mode is on.**
 
 The allowlist binds the **resolved IP**, not the hostname string. A string-only allowlist is
 bypassable by DNS rebinding, or by an allowlisted name that resolves to `169.254.169.254` (cloud
-metadata) or `127.0.0.1` (joyvend's own unlocked API). So every fetch resolves the host once, rejects
-loopback / link-local / metadata / the joyvend host's own address (and RFC1918 unless the credential
+metadata) or `127.0.0.1` (mykeep's own unlocked API). So every fetch resolves the host once, rejects
+loopback / link-local / metadata / the mykeep host's own address (and RFC1918 unless the credential
 explicitly allowlists a private host), **pins** a surviving IP, and dials that exact IP with the
 original Host/SNI — the transport never re-resolves. Because reads are auto-approved, this control
 carries the entire read-side blast radius; it cannot lean on the approval gate.

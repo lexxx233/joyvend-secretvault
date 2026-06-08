@@ -1,4 +1,4 @@
-module github.com/lexxx233/joyvend-secretvault
+module mykeep.ai/secretvault
 
 go 1.26.4
 

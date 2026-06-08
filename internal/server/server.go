@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lexxx233/joyvend-secretvault/internal/vault"
+	"mykeep.ai/secretvault/internal/vault"
 )
 
 // Options configures a Server. Tokens are generated if empty.
