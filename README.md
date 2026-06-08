@@ -4,10 +4,10 @@
 
 ### Your secrets, sealed on the stick — so an agent can act as you without ever seeing your keys.
 
-**Status: v1 core implemented + tested** (pure-Go library + HTTP server + CLI; GUI and
-joyvend-binary integration next). Architecture in **[DESIGN.md](./DESIGN.md)**, threat model in
-**[SECURITY.md](./SECURITY.md)**. Sibling: the
-[Memory Capsule](https://github.com/lexxx233/JoyVend-memory-capsule) (component #1).
+**Status: v1 implemented + tested** — pure-Go library, HTTP server, a **local GUI** (unlock + add
+secrets in the browser), and a CLI. Integration into the one joyvend binary + OAuth come next.
+Architecture in **[DESIGN.md](./DESIGN.md)**, threat model in **[SECURITY.md](./SECURITY.md)**.
+Sibling: the [Memory Capsule](https://github.com/lexxx233/JoyVend-memory-capsule) (component #1).
 
 [joyvend.io](https://joyvend.io) · **Personal · Private · Portable**
 
@@ -80,17 +80,23 @@ make cross    # cross-compile all six win/mac/linux × amd64/arm64 targets
 go test -race ./...   # needs CGO_ENABLED=1
 ```
 
-Run it: `secretvault serve` unlocks (or creates) `joyvend_kb/vault.json.enc` and serves the two
-planes. It prints two tokens — the **use** token for the agent (`/v1/vault`) and the **control**
-token for the GUI (`/api/vault`, always loopback-only). Pass `--lan` to expose only the use plane
-on the network; `--idle` sets the auto-lock minutes.
+Run it:
+
+- **`secretvault`** (default) opens the **GUI** in your browser: set a password, then add and manage
+  credentials, approve writes, and read the audit log. The GUI authenticates by the unlock password
+  → a loopback session cookie, so a co-resident agent (no password) can't reach the control plane.
+  It shows the **use** token to paste into your agent.
+- **`secretvault serve`** is headless: unlock at launch (`JOYVEND_VAULT_PASSPHRASE` or stdin), serve
+  the API only, print both tokens. `--lan` exposes *only* the use plane on the network; `--idle` sets
+  the auto-lock minutes.
 
 ```
 internal/secret   argon2id KEK→DEK + AES-256-GCM whole-file seal
 internal/vault    store (encrypted JSON), auth templates, allowlist + resolve-then-pin egress,
                   reflect-guard, hash-chained audit, rate limit, idle auto-lock
-internal/server   the two planes, loopback guard + LAN toggle, token auth, pending-approval
-cmd/secretvault   the runnable broker
+internal/server   the two planes, loopback guard + LAN toggle, token/session auth, pending-approval
+internal/gui      the local web app: unlock, add/manage credentials, approvals, audit
+cmd/secretvault   the runnable broker (gui | serve)
 ```
 
 ## Design principles

@@ -25,7 +25,8 @@ import (
 type Options struct {
 	EnableLAN       bool          // expose the USE plane on the LAN (control plane stays loopback)
 	UseToken        string        // agent token for /v1/vault
-	ControlToken    string        // GUI token for /api/vault
+	ControlToken    string        // GUI/CLI token for /api/vault (X-Vault-Token)
+	ControlSession  string        // GUI session-cookie value also accepted on the control plane
 	ApprovalTimeout time.Duration // how long a write blocks for a human (default 2m)
 }
 
@@ -64,15 +65,25 @@ func (s *Server) ControlToken() string { return s.opt.ControlToken }
 // Engine exposes the underlying engine (used by tests to override egress policy).
 func (s *Server) Engine() *vault.Engine { return s.engine }
 
-// Handler returns the composed HTTP handler.
+// Handler returns the composed HTTP handler for headless `serve` mode (root + health
+// + both planes).
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-
-	// Friendly root + health so a browser visit isn't a bare 404 (there's no GUI
-	// yet — this is an API). Neither reveals a token.
 	mux.HandleFunc("GET /{$}", s.handleRoot)
 	mux.HandleFunc("GET /healthz", s.handleHealth)
+	s.mountPlanes(mux)
+	return mux
+}
 
+// PlanesHandler returns just the two vault planes (no root/health) — used by the GUI,
+// which serves its own dashboard at /.
+func (s *Server) PlanesHandler() http.Handler {
+	mux := http.NewServeMux()
+	s.mountPlanes(mux)
+	return mux
+}
+
+func (s *Server) mountPlanes(mux *http.ServeMux) {
 	// USE plane: loopback-only unless LAN enabled; always requires the use token.
 	use := http.NewServeMux()
 	use.HandleFunc("POST /v1/vault/fetch", s.handleFetch)
@@ -83,18 +94,17 @@ func (s *Server) Handler() http.Handler {
 	}
 	mux.Handle("/v1/vault/", useGuard)
 
-	// CONTROL plane: ALWAYS loopback-only + control token.
+	// CONTROL plane: ALWAYS loopback-only; accepts the control token OR the GUI session.
 	ctrl := http.NewServeMux()
 	ctrl.HandleFunc("POST /api/vault/credentials", s.handlePut)
 	ctrl.HandleFunc("GET /api/vault/credentials", s.handleList)
 	ctrl.HandleFunc("DELETE /api/vault/credentials/{name}", s.handleDelete)
 	ctrl.HandleFunc("POST /api/vault/credentials/{name}/enable", s.handleEnable)
 	ctrl.HandleFunc("GET /api/vault/audit", s.handleAudit)
+	ctrl.HandleFunc("GET /api/vault/audit/verify", s.handleAuditVerify)
 	ctrl.HandleFunc("GET /api/vault/approvals", s.handlePending)
 	ctrl.HandleFunc("POST /api/vault/approvals/{id}/decide", s.handleDecide)
-	mux.Handle("/api/vault/", loopbackOnly(s.requireToken(s.opt.ControlToken, ctrl)))
-
-	return mux
+	mux.Handle("/api/vault/", loopbackOnly(s.controlAuth(ctrl)))
 }
 
 // --- root / health (no auth, no secrets) ---
@@ -197,6 +207,14 @@ func (s *Server) handleAudit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"audit": s.store.Audit()})
 }
 
+func (s *Server) handleAuditVerify(w http.ResponseWriter, r *http.Request) {
+	if err := s.store.VerifyAudit(); err != nil {
+		writeJSON(w, 200, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]any{"ok": true})
+}
+
 func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"pending": s.approver.list()})
 }
@@ -217,13 +235,35 @@ func (s *Server) handleDecide(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) requireToken(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got := r.Header.Get("X-Vault-Token")
-		if subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
+		if !tokenOK(r.Header.Get("X-Vault-Token"), token) {
 			writeErr(w, 401, "unauthorized")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// controlAuth gates the control plane: the X-Vault-Token control token (CLI/curl) OR
+// the GUI session cookie (set after a password unlock). A co-resident agent has
+// neither — it never sees the control token and cannot unlock to mint a session.
+func (s *Server) controlAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if tokenOK(r.Header.Get("X-Vault-Token"), s.opt.ControlToken) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if s.opt.ControlSession != "" {
+			if c, err := r.Cookie("sv_session"); err == nil && tokenOK(c.Value, s.opt.ControlSession) {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		writeErr(w, 401, "unauthorized")
+	})
+}
+
+func tokenOK(got, want string) bool {
+	return want != "" && subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }
 
 func loopbackOnly(next http.Handler) http.Handler {
