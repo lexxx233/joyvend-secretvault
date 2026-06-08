@@ -4,9 +4,10 @@
 
 ### Your secrets, sealed on the stick — so an agent can act as you without ever seeing your keys.
 
-**Status: design, no code yet** — the architecture is settled in **[DESIGN.md](./DESIGN.md)** and
-the threat model in **[SECURITY.md](./SECURITY.md)**, while the
-[Memory Capsule](https://github.com/lexxx233/JoyVend-memory-capsule) (component #1) ships.
+**Status: v1 core implemented + tested** (pure-Go library + HTTP server + CLI; GUI and
+joyvend-binary integration next). Architecture in **[DESIGN.md](./DESIGN.md)**, threat model in
+**[SECURITY.md](./SECURITY.md)**. Sibling: the
+[Memory Capsule](https://github.com/lexxx233/JoyVend-memory-capsule) (component #1).
 
 [joyvend.io](https://joyvend.io) · **Personal · Private · Portable**
 
@@ -67,6 +68,30 @@ plugin. SecretVault is REST-native because it *is* an HTTP proxy.
 - **SecretVault** — lets the agent *act as* you, safely.
 
 All on one stick, under one password, sealed with the suite's whole-DB AES-256-GCM encryption.
+
+## Build & test
+
+```sh
+make test     # go test ./...      (46 tests; crypto, allowlist/SSRF, auth, reflect-guard,
+              #                      audit chain, plane separation, approval flow)
+make build    # -> bin/secretvault
+make guard    # prove the build pulls in zero CGo
+make cross    # cross-compile all six win/mac/linux × amd64/arm64 targets
+go test -race ./...   # needs CGO_ENABLED=1
+```
+
+Run it: `secretvault serve` unlocks (or creates) `joyvend_kb/vault.json.enc` and serves the two
+planes. It prints two tokens — the **use** token for the agent (`/v1/vault`) and the **control**
+token for the GUI (`/api/vault`, always loopback-only). Pass `--lan` to expose only the use plane
+on the network; `--idle` sets the auto-lock minutes.
+
+```
+internal/secret   argon2id KEK→DEK + AES-256-GCM whole-file seal
+internal/vault    store (encrypted JSON), auth templates, allowlist + resolve-then-pin egress,
+                  reflect-guard, hash-chained audit, rate limit, idle auto-lock
+internal/server   the two planes, loopback guard + LAN toggle, token auth, pending-approval
+cmd/secretvault   the runnable broker
+```
 
 ## Design principles
 

@@ -1,0 +1,4 @@
+/bin/
+/joyvend_kb/
+*.enc
+.DS_Store
