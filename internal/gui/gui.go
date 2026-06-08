@@ -85,6 +85,9 @@ func (a *App) handler() http.Handler {
 
 func (a *App) index(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Never cache the dashboard — otherwise a browser serves a stale build's UI
+	// after the binary is updated.
+	w.Header().Set("Cache-Control", "no-store, must-revalidate")
 	_, _ = w.Write(indexHTML)
 }
 
