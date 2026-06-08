@@ -59,6 +59,25 @@ func TestRootAndHealthAndNotFound(t *testing.T) {
 	}
 }
 
+func TestGuideEndpoint(t *testing.T) {
+	s := newServer(t, Options{})
+	h := s.Handler()
+	if w := do(h, "GET", "/v1/vault/guide", "", "127.0.0.1:1", ""); w.Code != 401 {
+		t.Fatalf("guide without token => %d, want 401", w.Code)
+	}
+	w := do(h, "GET", "/v1/vault/guide", s.UseToken(), "127.0.0.1:1", "")
+	if w.Code != 200 || !bytes.Contains(w.Body.Bytes(), []byte("by reference")) {
+		t.Fatalf("guide => %d %q", w.Code, w.Body.String())
+	}
+}
+
+func TestSnippetText(t *testing.T) {
+	sn := SnippetText("http://127.0.0.1:8770", "TOK123")
+	if !bytes.Contains([]byte(sn), []byte("TOK123")) || !bytes.Contains([]byte(sn), []byte("/v1/vault/guide")) {
+		t.Fatalf("snippet missing token or guide pointer: %q", sn)
+	}
+}
+
 func TestControlPlaneRejectsNonLoopback(t *testing.T) {
 	s := newServer(t, Options{})
 	h := s.Handler()

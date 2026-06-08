@@ -88,6 +88,7 @@ func (s *Server) mountPlanes(mux *http.ServeMux) {
 	use := http.NewServeMux()
 	use.HandleFunc("POST /v1/vault/fetch", s.handleFetch)
 	use.HandleFunc("GET /v1/vault/credentials", s.handleList)
+	use.HandleFunc("GET /v1/vault/guide", s.handleGuide)
 	useGuard := s.requireToken(s.opt.UseToken, use)
 	if !s.opt.EnableLAN {
 		useGuard = loopbackOnly(useGuard)

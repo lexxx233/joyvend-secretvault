@@ -68,9 +68,9 @@
     <!-- agent token -->
     <div class="card">
       <h2>Agent connection</h2>
-      <p class="sub">Give your AI agent this <em>use</em> token; it calls <code>POST /v1/vault/fetch</code>. It can never create or read a secret.</p>
-      <div class="token" id="useToken" style="margin-top:10px"></div>
-      <div style="margin-top:10px"><button class="ghost tiny" onclick="copyToken()">Copy token</button></div>
+      <p class="sub">Paste this into your AI agent. It can act by reference but can never create or read a secret.</p>
+      <pre class="token" id="snippet" style="margin-top:10px;white-space:pre-wrap"></pre>
+      <div style="margin-top:10px"><button class="ghost tiny" onclick="copySnippet()">Copy snippet</button></div>
     </div>
 
     <!-- add credential -->
@@ -155,9 +155,19 @@ function showLock(){
   $('noRecovery').textContent=firstLaunch?'⚠ No recovery — a forgotten password means the secrets are unrecoverable, by design.':'';
   $('pw').focus();
 }
+function snippetText(tok){
+  const b=location.origin;
+  return `You have a local SecretVault at ${b} — it lets you take authenticated API actions AS the user `
+   +`WITHOUT ever seeing their secrets. Authenticate EVERY call with the header:\n`
+   +`    X-Vault-Token: ${tok}\n`
+   +`▶ First, fetch your operating manual:  GET ${b}/v1/vault/guide\n`
+   +`Then follow it. You act BY REFERENCE: never ask for a key. To make an authenticated request, POST it `
+   +`to ${b}/v1/vault/fetch naming a credential; SecretVault attaches the auth server-side and returns the `
+   +`response (never the secret). Use your shell or fetch tool to call the API.`;
+}
 function showDash(tok){
   $('lockCard').classList.add('hide');$('dash').classList.remove('hide');$('lockBtn').classList.remove('hide');
-  $('useToken').textContent=tok||'(none)';typeFields();loadCreds();loadApprovals();loadAudit();
+  $('snippet').textContent=snippetText(tok||'(unlock to mint)');typeFields();loadCreds();loadApprovals();loadAudit();
 }
 async function doUnlock(){
   const pw=$('pw').value;if(!pw){return}
@@ -168,7 +178,7 @@ async function doUnlock(){
 }
 async function lock(){await api('POST','/api/lock');location.reload()}
 
-function copyToken(){navigator.clipboard&&navigator.clipboard.writeText($('useToken').textContent)}
+function copySnippet(){navigator.clipboard&&navigator.clipboard.writeText($('snippet').textContent)}
 function toggleSecret(){const i=$('c_secret');const s=i.type==='password';i.type=s?'text':'password';$('showBtn').textContent=s?'Hide':'Show'}
 function typeFields(){
   const t=$('c_type').value;
