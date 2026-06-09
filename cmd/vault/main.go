@@ -52,14 +52,14 @@ func runGUI(args []string) error {
 	fs := flag.NewFlagSet("gui", flag.ExitOnError)
 	path := fs.String("vault", "mykeep_kb/vault.json.enc", "path to the encrypted vault file")
 	addr := fs.String("addr", "127.0.0.1:8770", "loopback listen address")
+	idleMin := fs.Int("idle", 15, "idle minutes before auto-lock (0 disables)")
 	fs.Parse(args)
 	if err := os.MkdirAll(dir(*path), 0o700); err != nil {
 		return err
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	fmt.Printf("\n🔐  Vault GUI: http://%s  (opening your browser…)\n", *addr)
-	return gui.New(*path, *addr).Run(ctx)
+	return gui.New(*path, *addr, time.Duration(*idleMin)*time.Minute).Run(ctx)
 }
 
 func runServe(args []string) error {

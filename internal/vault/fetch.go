@@ -144,6 +144,15 @@ func (e *Engine) Fetch(ctx context.Context, source string, fr FetchRequest) (Fet
 	} else if u.Scheme != "https" {
 		return fail("", errBadURL)
 	}
+	// port: a credential that opted into PRIVATE egress (allow_private) is restricted to
+	// the scheme's standard port, so the agent can't turn Vault into an authenticated
+	// connector to SSH/Redis/Postgres/etc. on an internal allowlisted host. Public-host
+	// credentials keep arbitrary ports (the host allowlist + public internet bound them).
+	if cred.AllowPriv {
+		if p := u.Port(); p != "" && p != "443" && p != "80" {
+			return fail("", errBadURL)
+		}
+	}
 	host, err := normalizeHost(u.Hostname())
 	if err != nil {
 		return fail("", errBadURL)
@@ -208,6 +217,15 @@ func (e *Engine) Fetch(ctx context.Context, source string, fr FetchRequest) (Fet
 		return fail(host, errUpstream) // never surface err: it embeds the URL
 	}
 	defer resp.Body.Close()
+
+	// The reflect-guard can only scan a body it can read. Go transparently decompresses
+	// the gzip it negotiated (Accept-Encoding is stripped from the agent), clearing
+	// Content-Encoding. If a (possibly hostile) upstream still returns a non-identity
+	// encoding it chose unsolicited (br/zstd/deflate), the body is opaque to the scanner
+	// — fail closed rather than hand the agent an unscannable, possibly secret-bearing body.
+	if ce := resp.Header.Get("Content-Encoding"); ce != "" && !strings.EqualFold(ce, "identity") {
+		return fail(host, errReflect)
+	}
 
 	max := e.maxBytes
 	if fr.MaxResponseBytes > 0 && fr.MaxResponseBytes < max {

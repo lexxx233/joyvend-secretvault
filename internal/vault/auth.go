@@ -14,6 +14,10 @@ var denylistHeaders = map[string]bool{
 	"cookie":              true,
 	"host":                true,
 	"content-length":      true,
+	// accept-encoding is stripped so the agent cannot force a COMPRESSED response that
+	// the reflect-guard (which scans raw bytes) can't read — Go's transport then
+	// negotiates gzip itself and transparently decompresses before the scan.
+	"accept-encoding": true,
 }
 
 // buildHeaders constructs the outgoing header set from scratch: agent-supplied

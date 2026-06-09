@@ -8,14 +8,17 @@ package gui
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,51 +27,116 @@ import (
 	"mykeep.ai/vault/internal/vault"
 )
 
+const sessionCookie = "sv_session"
+
 //go:embed web/index.html
 var indexHTML []byte
 
 // App owns the GUI lifecycle: locked until the human unlocks via the browser.
 type App struct {
-	vaultPath string
-	addr      string
+	vaultPath   string
+	addr        string
+	idle        time.Duration
+	launchToken string // handed to the human's browser via the opened URL; required by setup/unlock
 
-	mu      sync.Mutex
-	store   *vault.Store
-	srv     *server.Server
-	planes  http.Handler
-	session string
+	mu       sync.Mutex
+	store    *vault.Store
+	srv      *server.Server
+	planes   http.Handler
+	session  string
+	lastSeen time.Time
 }
 
-// New builds a GUI app over a vault file path.
-func New(vaultPath, addr string) *App {
-	return &App{vaultPath: vaultPath, addr: addr}
+// New builds a GUI app over a vault file path. idle<=0 disables idle auto-lock.
+func New(vaultPath, addr string, idle time.Duration) *App {
+	return &App{vaultPath: vaultPath, addr: addr, idle: idle, launchToken: randHex(24)}
 }
 
 // Run serves the GUI and opens the browser, blocking until ctx is done.
 func (a *App) Run(ctx context.Context) error {
-	httpSrv := &http.Server{Addr: a.addr, Handler: loopbackGuard(a.handler())}
+	httpSrv := &http.Server{Addr: a.addr, Handler: loopbackGuard(a.touch(a.handler()))}
 	errCh := make(chan error, 1)
 	go func() {
 		if e := httpSrv.ListenAndServe(); e != nil && e != http.ErrServerClosed {
 			errCh <- e
 		}
 	}()
-	_ = openBrowser("http://" + a.addr)
+	url := "http://" + a.addr + "/?lt=" + a.launchToken
+	fmt.Printf("\n🔐  Vault GUI: %s  (opening your browser…)\n", url)
+	_ = openBrowser(url)
 
-	select {
-	case <-ctx.Done():
-	case e := <-errCh:
-		return e
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			_ = httpSrv.Shutdown(sctx)
+			cancel()
+			return a.lockNow()
+		case e := <-errCh:
+			_ = a.lockNow()
+			return e
+		case <-ticker.C:
+			a.maybeIdleLock()
+		}
 	}
-	sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_ = httpSrv.Shutdown(sctx)
+}
+
+// lockNow seals the vault and zeroizes the key. Safe to call when locked.
+func (a *App) lockNow() error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.store != nil {
-		return a.store.Close()
+	st := a.store
+	a.store, a.srv, a.planes, a.session = nil, nil, nil, ""
+	a.mu.Unlock()
+	if st != nil {
+		return st.Close()
 	}
 	return nil
+}
+
+func (a *App) maybeIdleLock() {
+	if a.idle <= 0 {
+		return
+	}
+	a.mu.Lock()
+	idle := a.srv != nil && time.Since(a.lastSeen) > a.idle
+	a.mu.Unlock()
+	if idle {
+		fmt.Fprintln(os.Stderr, "idle auto-lock — sealing the vault")
+		_ = a.lockNow()
+	}
+}
+
+// touch resets the idle clock on HUMAN/control-plane activity only — not the agent's
+// /v1/vault use-plane traffic (which must not hold the vault open past the human leaving).
+func (a *App) touch(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/v1/") {
+			a.mu.Lock()
+			if a.srv != nil {
+				a.lastSeen = time.Now()
+			}
+			a.mu.Unlock()
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (a *App) hasLaunchToken(r *http.Request) bool {
+	got := r.Header.Get("X-Launch-Token")
+	return got != "" && subtle.ConstantTimeCompare([]byte(got), []byte(a.launchToken)) == 1
+}
+
+func (a *App) hasSession(r *http.Request) bool {
+	a.mu.Lock()
+	sess := a.session
+	a.mu.Unlock()
+	if sess == "" {
+		return false
+	}
+	c, err := r.Cookie(sessionCookie)
+	return err == nil && subtle.ConstantTimeCompare([]byte(c.Value), []byte(sess)) == 1
 }
 
 func (a *App) handler() http.Handler {
@@ -91,14 +159,21 @@ func (a *App) index(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write(indexHTML)
 }
 
-func (a *App) state(w http.ResponseWriter, _ *http.Request) {
+func (a *App) state(w http.ResponseWriter, r *http.Request) {
 	a.mu.Lock()
 	unlocked := a.srv != nil
-	var useToken string
-	if a.srv != nil {
-		useToken = a.srv.UseToken()
+	sess := a.session
+	tok := ""
+	if unlocked {
+		tok = a.srv.UseToken()
 	}
 	a.mu.Unlock()
+	useToken := ""
+	if unlocked && sess != "" { // only the human's session sees the agent token
+		if c, err := r.Cookie(sessionCookie); err == nil && subtle.ConstantTimeCompare([]byte(c.Value), []byte(sess)) == 1 {
+			useToken = tok
+		}
+	}
 	_, statErr := os.Stat(a.vaultPath)
 	writeJSON(w, 200, map[string]any{
 		"first_launch": os.IsNotExist(statErr),
@@ -112,6 +187,10 @@ type passReq struct {
 }
 
 func (a *App) setup(w http.ResponseWriter, r *http.Request) {
+	if !a.hasLaunchToken(r) { // only the human's launched browser may set the password
+		writeErr(w, 401, "launch token required")
+		return
+	}
 	if _, err := os.Stat(a.vaultPath); err == nil {
 		writeErr(w, 409, "already set up")
 		return
@@ -120,6 +199,10 @@ func (a *App) setup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) unlock(w http.ResponseWriter, r *http.Request) {
+	if !a.hasLaunchToken(r) {
+		writeErr(w, 401, "launch token required")
+		return
+	}
 	a.open(w, r, false)
 }
 
@@ -160,15 +243,13 @@ func (a *App) open(w http.ResponseWriter, r *http.Request, create bool) {
 	writeJSON(w, 200, map[string]any{"unlocked": true, "use_token": srv.UseToken()})
 }
 
-func (a *App) lock(w http.ResponseWriter, _ *http.Request) {
-	a.mu.Lock()
-	st := a.store
-	a.store, a.srv, a.planes, a.session = nil, nil, nil, ""
-	a.mu.Unlock()
-	if st != nil {
-		_ = st.Close()
+func (a *App) lock(w http.ResponseWriter, r *http.Request) {
+	if !a.hasSession(r) { // only the human's session may seal the vault (else loopback DoS)
+		writeErr(w, 401, "unauthorized")
+		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "sv_session", Value: "", Path: "/", MaxAge: -1})
+	_ = a.lockNow()
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1})
 	writeJSON(w, 200, map[string]any{"unlocked": false})
 }
 
