@@ -9,6 +9,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 
 	"golang.org/x/crypto/argon2"
@@ -110,8 +111,44 @@ func Open(password, file []byte) (*Keyring, []byte, error) {
 	return k, pt, nil
 }
 
-// Seal re-encrypts plaintext under the keyring's DEK and returns a full file
-// (constant header + fresh body). Each call uses a fresh random body nonce.
+// ErrStandaloneFile is returned by OpenSealed when the file on disk carries the
+// standalone JVS1 header (password-keyed) rather than a headerless suite blob. The
+// two key sources are incompatible by design; this surfaces a clear message instead
+// of an opaque GCM authentication failure.
+var ErrStandaloneFile = errors.New("secret: vault file is standalone (password-keyed); the mykeep suite uses one master key")
+
+// FromDEK builds a keyring around an externally-supplied 32-byte DEK with NO file
+// header. This is the mykeep suite seam: the aggregator owns key derivation and hands
+// each component its own sub-key, so a merged vault file is headerless
+// (nonce|GCM(dek, body)) and is NOT password-openable. The dek is copied.
+func FromDEK(dek []byte) (*Keyring, error) {
+	if len(dek) != dekLen {
+		return nil, fmt.Errorf("secret: DEK must be %d bytes, got %d", dekLen, len(dek))
+	}
+	return &Keyring{dek: append([]byte(nil), dek...)}, nil // nil header => headerless
+}
+
+// OpenSealed decrypts a headerless merged-mode file under the injected DEK. A file
+// bearing the standalone JVS1 magic returns ErrStandaloneFile; a wrong DEK fails the
+// body's GCM tag.
+func OpenSealed(dek, file []byte) (*Keyring, []byte, error) {
+	if len(file) >= len(magic) && string(file[:len(magic)]) == magic {
+		return nil, nil, ErrStandaloneFile
+	}
+	k, err := FromDEK(dek)
+	if err != nil {
+		return nil, nil, err
+	}
+	pt, err := k.open(file)
+	if err != nil {
+		return nil, nil, err
+	}
+	return k, pt, nil
+}
+
+// Seal re-encrypts plaintext under the keyring's DEK and returns a full file. A
+// password-derived keyring prepends its constant header; an injected-DEK (suite)
+// keyring has a nil header and emits a headerless body. Each call uses a fresh nonce.
 func (k *Keyring) Seal(plaintext []byte) ([]byte, error) {
 	bodyGCM, err := gcm(k.dek)
 	if err != nil {

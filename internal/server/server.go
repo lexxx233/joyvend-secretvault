@@ -27,6 +27,7 @@ type Options struct {
 	UseToken        string        // agent token for /v1/vault
 	ControlToken    string        // GUI/CLI token for /api/vault (X-Vault-Token)
 	ControlSession  string        // GUI session-cookie value also accepted on the control plane
+	SessionCookie   string        // name of the session cookie (default "sv_session"; the suite uses "mykeep_session")
 	ApprovalTimeout time.Duration // how long a write blocks for a human (default 2m)
 }
 
@@ -48,6 +49,9 @@ func New(store *vault.Store, opt Options) *Server {
 	}
 	if opt.ApprovalTimeout <= 0 {
 		opt.ApprovalTimeout = 2 * time.Minute
+	}
+	if opt.SessionCookie == "" {
+		opt.SessionCookie = "sv_session"
 	}
 	ap := newPendingApprover(opt.ApprovalTimeout)
 	return &Server{
@@ -82,6 +86,12 @@ func (s *Server) PlanesHandler() http.Handler {
 	s.mountPlanes(mux)
 	return mux
 }
+
+// Mount registers the two vault planes onto a shared mux owned by the mykeep suite
+// aggregator (which serves its own root/health/GUI). Both planes keep their own
+// guards (use-token, loopback-only control), so composition preserves the plane
+// separation that is the load-bearing security control.
+func (s *Server) Mount(mux *http.ServeMux) { s.mountPlanes(mux) }
 
 func (s *Server) mountPlanes(mux *http.ServeMux) {
 	// USE plane: loopback-only unless LAN enabled; always requires the use token.
@@ -254,7 +264,7 @@ func (s *Server) controlAuth(next http.Handler) http.Handler {
 			return
 		}
 		if s.opt.ControlSession != "" {
-			if c, err := r.Cookie("sv_session"); err == nil && tokenOK(c.Value, s.opt.ControlSession) {
+			if c, err := r.Cookie(s.opt.SessionCookie); err == nil && tokenOK(c.Value, s.opt.ControlSession) {
 				next.ServeHTTP(w, r)
 				return
 			}

@@ -85,6 +85,59 @@ func Open(path string, password []byte) (*Store, error) {
 	return &Store{path: path, key: key, doc: &doc, enabled: map[string]bool{}}, nil
 }
 
+// CreateWithDEK initialises a new vault at path keyed by an externally-supplied DEK
+// (mykeep suite mode). The file is headerless and NOT password-openable — the suite
+// aggregator owns key derivation and unlocks every component with one master key.
+func CreateWithDEK(path string, dek []byte) (*Store, error) {
+	if _, err := os.Stat(path); err == nil {
+		return nil, fmt.Errorf("vault: %s already exists", path)
+	}
+	salt := make([]byte, 16)
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
+		return nil, err
+	}
+	key, err := secret.FromDEK(dek)
+	if err != nil {
+		return nil, err
+	}
+	doc := &vaultDoc{
+		Version:     CurrentVersion,
+		FPSalt:      salt,
+		Credentials: map[string]*Credential{},
+	}
+	s := &Store{path: path, key: key, doc: doc, enabled: map[string]bool{}}
+	if err := s.save(); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// OpenWithDEK decrypts an existing headerless suite vault file under the injected DEK.
+// A standalone (JVS1, password-keyed) file yields secret.ErrStandaloneFile.
+func OpenWithDEK(path string, dek []byte) (*Store, error) {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	key, pt, err := secret.OpenSealed(dek, file)
+	if err != nil {
+		return nil, err
+	}
+	var doc vaultDoc
+	if err := json.Unmarshal(pt, &doc); err != nil {
+		key.Zero()
+		return nil, fmt.Errorf("vault: corrupt document: %w", err)
+	}
+	if doc.Version != CurrentVersion {
+		key.Zero()
+		return nil, fmt.Errorf("vault: unsupported version %d (want %d)", doc.Version, CurrentVersion)
+	}
+	if doc.Credentials == nil {
+		doc.Credentials = map[string]*Credential{}
+	}
+	return &Store{path: path, key: key, doc: &doc, enabled: map[string]bool{}}, nil
+}
+
 // Close re-seals and wipes the key (idle auto-lock and shutdown both call this).
 func (s *Store) Close() error {
 	s.mu.Lock()
