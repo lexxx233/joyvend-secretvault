@@ -5,50 +5,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vault</title>
 <style>
+  /* Clean-technical theme — system fonts only, renders identically offline. */
   :root{
-    --bg:#0c2438; --ink:#eee7d7; --mist:rgba(238,231,215,.72); --mist2:rgba(238,231,215,.42);
-    --panel:rgba(238,231,215,.045); --line:rgba(201,162,75,.28); --line2:rgba(201,162,75,.16);
-    --gold:#c9a24b; --gold-bright:#e0c074; --err:#e8856b; --ok:#7fb98a;
+    --bg:#0a0a0b; --panel:#121214; --panel-2:#161619;
+    --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
+    --text:#ededf0; --muted:#9a9aa4; --faint:#6b6b75;
+    --accent:#5e9eff; --accent-soft:rgba(94,158,255,.14); --accent-line:rgba(94,158,255,.4);
+    --err:#ff7a6b; --ok:#46c266;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    color-scheme:dark;
   }
   *{box-sizing:border-box}
-  body{margin:0;min-height:100vh;background:linear-gradient(180deg,#0e2840,#0c2438 45%,#091d2f);
-    color:var(--ink);font:15px/1.55 system-ui,sans-serif;display:flex;justify-content:center}
-  .wrap{width:100%;max-width:760px;padding:40px 20px 80px}
-  h1{font-family:Georgia,serif;font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:20px;margin:0}
-  h2{font-family:Georgia,serif;font-size:12px;text-transform:uppercase;letter-spacing:.22em;color:var(--gold-bright);font-weight:600;margin:0 0 14px}
-  .sub{color:var(--mist2);font-size:13px;margin:6px 0 0}
-  .card{background:var(--panel);border:1px solid var(--line2);border-radius:7px;padding:22px;margin-top:22px}
-  label{display:block;font-size:12px;color:var(--mist);margin:12px 0 5px;letter-spacing:.02em}
-  input,select,textarea{width:100%;background:rgba(9,22,36,.6);border:1px solid var(--line);color:var(--ink);
-    border-radius:4px;padding:9px 11px;font:14px system-ui,sans-serif}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);
+    font:15px/1.55 var(--sans);display:flex;justify-content:center;-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(80% 50% at 50% -10%,rgba(94,158,255,.07),transparent 70%)}
+  ::selection{background:var(--accent-soft)}
+  .wrap{width:100%;max-width:760px;padding:36px 20px 80px}
+  h1{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-weight:600;font-size:18px;letter-spacing:-.01em;margin:0}
+  h1 .sq{width:24px;height:24px;border-radius:7px;border:1px solid var(--accent-line);background:var(--accent-soft);display:grid;place-items:center;font-size:.82rem}
+  h2{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:500;margin:0 0 14px}
+  .sub{color:var(--faint);font-size:13px;margin:7px 0 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-top:18px}
+  label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
+  input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:10px 12px;font:14px var(--sans)}
   textarea{resize:vertical;min-height:54px}
-  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent-line)}
   .row{display:flex;gap:12px}.row>*{flex:1}
-  button{font-family:Georgia,serif;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
-    background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#1a1300;border:0;border-radius:4px;
-    padding:11px 16px;font-weight:600;cursor:pointer;transition:.15s}
-  button:hover{filter:brightness(1.07)}button.ghost{background:none;border:1px solid var(--line);color:var(--mist)}
-  button.tiny{padding:5px 10px;font-size:10.5px}
+  button{font-family:var(--sans);font-size:13px;font-weight:550;
+    background:var(--accent);color:#06121f;border:1px solid var(--accent);border-radius:8px;
+    padding:10px 16px;cursor:pointer;transition:.16s ease}
+  button:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  button.ghost{background:var(--panel);border:1px solid var(--line-2);color:var(--text)}
+  button.ghost:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+  button.tiny{padding:5px 10px;font-size:11px;border-radius:6px}
   .topbar{display:flex;justify-content:space-between;align-items:center}
   .msg{margin-top:12px;font-size:13px;min-height:18px}.msg.err{color:var(--err)}.msg.ok{color:var(--ok)}
-  .token{font-family:ui-monospace,monospace;font-size:12px;word-break:break-all;background:rgba(9,22,36,.6);
-    border:1px solid var(--line2);border-radius:4px;padding:9px 11px;color:var(--gold-bright)}
+  .token{font-family:var(--mono);font-size:12px;word-break:break-all;background:var(--bg);
+    border:1px solid var(--line);border-radius:8px;padding:11px 12px;color:var(--accent)}
   table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
-  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line2);vertical-align:top}
-  th{color:var(--mist2);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
-  .pill{display:inline-block;font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--gold-bright)}
+  th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--faint);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
   .warn{color:var(--err);font-size:11.5px;margin-top:4px}
   .hide{display:none}
-  .muted{color:var(--mist2)}.fp{font-family:ui-monospace,monospace;font-size:11px;color:var(--mist2)}
-  .approve{background:linear-gradient(180deg,#a9d9b3,#7fb98a)}
-  .deny{background:none;border:1px solid var(--err);color:var(--err)}
+  .muted{color:var(--muted)}.fp{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .approve{background:var(--ok);border-color:var(--ok);color:#04140a}
+  .deny{background:var(--panel);border:1px solid rgba(255,122,107,.5);color:var(--err)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div><h1>🔐 Vault</h1><p class="sub" id="tagline">Your secrets, sealed on the stick.</p></div>
+    <div><h1><span class="sq">🔐</span>Vault</h1><p class="sub" id="tagline">Your secrets, sealed on the stick.</p></div>
     <button class="ghost hide" id="lockBtn" onclick="lock()">Lock</button>
   </div>
 
