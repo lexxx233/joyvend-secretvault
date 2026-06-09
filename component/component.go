@@ -13,6 +13,7 @@ package component
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,6 +25,19 @@ import (
 
 // ID is vault's stable identifier within the suite.
 const ID = "vault"
+
+// FetchRequest / FetchResponse are the by-reference request/response — the secret never
+// crosses them. Re-exported (aliases to the internal types) so a suite aggregator, which
+// cannot import vault's internal/ packages, can drive vault by reference programmatically
+// — e.g. to back Foundry's foundry.vault.fetch so a sandboxed tool can act as the user
+// without ever seeing a credential.
+type (
+	FetchRequest  = vault.FetchRequest
+	FetchResponse = vault.FetchResponse
+)
+
+// ErrLocked is returned by Fetch when the component has not been unlocked.
+var ErrLocked = errors.New("vault: locked")
 
 // vaultFile is vault's encrypted store, resolved inside the suite data dir.
 const vaultFile = "vault.json.enc"
@@ -118,6 +132,21 @@ func (c *Component) ControlToken() string {
 		return ""
 	}
 	return c.srv.ControlToken()
+}
+
+// Fetch makes an authenticated request AS the user by credential reference: vault attaches
+// the secret server-side and returns the response, which never contains it. source is an
+// audit label (e.g. the calling tool). The same allowlist + SSRF guard + write-approval
+// gate as the HTTP use plane apply. ErrLocked if not unlocked.
+func (c *Component) Fetch(ctx context.Context, source string, fr FetchRequest) (FetchResponse, error) {
+	if c.srv == nil {
+		return FetchResponse{}, ErrLocked
+	}
+	resp, ferr := c.srv.Engine().Fetch(ctx, source, fr)
+	if ferr != nil {
+		return FetchResponse{}, ferr
+	}
+	return resp, nil
 }
 
 // Lock re-seals and zeroizes the key. Idempotent.
