@@ -1,16 +1,16 @@
-# SecretVault — Design
+# Vault — Design
 
 > **Status: design, no code yet.** This document is the settled architecture for the v1 build.
 > It is the source of truth for the decisions below; `SECURITY.md` holds the threat model.
 > Part of [mykeep](https://mykeep.ai) — see the [README](./README.md).
 
-SecretVault lets an AI agent take authenticated actions **as you** without ever seeing your
+Vault lets an AI agent take authenticated actions **as you** without ever seeing your
 credentials. It is an **authenticated-egress broker**: the agent makes a request *by reference*
-("send this to `api.stripe.com` using credential `stripe`"); SecretVault attaches the secret
+("send this to `api.stripe.com` using credential `stripe`"); Vault attaches the secret
 server-side, forwards the request, and returns only the response. The raw secret never enters the
 agent's context, the transcript, or the model provider.
 
-It ships as a **module inside the one mykeep binary**, reusing the Memory Capsule's substrate:
+It ships as a **module inside the one mykeep binary**, reusing the Capsule's substrate:
 the argon2id-KEK→DEK key hierarchy, AES-256-GCM sealing, the debounced off-lock re-seal, the
 single-instance lock, and the one-password unlock. One unlock arms memory *and* secrets.
 
@@ -18,7 +18,7 @@ single-instance lock, and the one-password unlock. One unlock arms memory *and* 
 
 ## 1. Storage — a single encrypted JSON file
 
-Secrets are a tiny dataset (dozens of credentials, not millions of rows), so SecretVault does **not**
+Secrets are a tiny dataset (dozens of credentials, not millions of rows), so Vault does **not**
 use SQLite. It uses one sealed JSON file beside the memory DB:
 
 ```

@@ -1,4 +1,4 @@
-// Package secret implements SecretVault's at-rest crypto: a password-derived KEK
+// Package secret implements Vault's at-rest crypto: a password-derived KEK
 // (argon2id) wrapping a random 256-bit DEK, which seals the whole vault JSON as one
 // AES-256-GCM blob (DESIGN.md §1). The DEK lives only in RAM while unlocked; Zero
 // wipes it on lock. Pure Go, no CGo.

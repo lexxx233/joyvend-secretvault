@@ -1,4 +1,4 @@
-// Package server exposes SecretVault over HTTP as two planes (DESIGN.md §2):
+// Package server exposes Vault over HTTP as two planes (DESIGN.md §2):
 //   - the USE plane (/v1/vault) the agent calls — fetch + metadata list — guarded by
 //     a mandatory token, loopback-only unless LAN mode is explicitly enabled;
 //   - the CONTROL plane (/api/vault) the human GUI calls — credential CRUD, enable,
@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"mykeep.ai/secretvault/internal/vault"
+	"mykeep.ai/vault/internal/vault"
 )
 
 // Options configures a Server. Tokens are generated if empty.
@@ -113,7 +113,7 @@ func (s *Server) mountPlanes(mux *http.ServeMux) {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{
 		"ok":      true,
-		"service": "secretvault",
+		"service": "vault",
 		"planes":  []string{"/v1/vault (agent)", "/api/vault (control, loopback-only)"},
 		"lan":     s.opt.EnableLAN,
 	})
@@ -125,11 +125,11 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 const rootHTML = `<!doctype html><html><head><meta charset="utf-8">
-<title>SecretVault</title><style>
+<title>Vault</title><style>
 body{font-family:system-ui,sans-serif;max-width:42rem;margin:4rem auto;padding:0 1rem;line-height:1.6;color:#1c2833}
 code{background:#eef;padding:.1em .35em;border-radius:3px}h1{margin-bottom:.2em}.muted{color:#667}
 </style></head><body>
-<h1>🔐 SecretVault</h1>
+<h1>🔐 Vault</h1>
 <p class="muted">Running. This is a local <strong>API</strong>, not a web app — there is no GUI yet,
 so visiting a path in the browser will 404. That's expected.</p>
 <ul>

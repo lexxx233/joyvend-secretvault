@@ -39,8 +39,8 @@ func sessionCookie(w *httptest.ResponseRecorder) string {
 
 func TestGUIServesIndex(t *testing.T) {
 	w := req(newApp(t).handler(), "GET", "/", "", "")
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "SecretVault") {
-		t.Fatalf("index => %d, has SecretVault=%v", w.Code, strings.Contains(w.Body.String(), "SecretVault"))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Vault") {
+		t.Fatalf("index => %d, has Vault=%v", w.Code, strings.Contains(w.Body.String(), "Vault"))
 	}
 }
 

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"mykeep.ai/secretvault/internal/vault"
+	"mykeep.ai/vault/internal/vault"
 )
 
 func newServer(t *testing.T, opt Options) *Server {

@@ -8,24 +8,24 @@ import (
 // SnippetText is the one-paragraph block a human pastes into their AI agent. It
 // carries the loopback URL + use token and points the agent at the full guide.
 func SnippetText(baseURL, useToken string) string {
-	return fmt.Sprintf(`You have a local SecretVault at %s — it lets you take authenticated API
+	return fmt.Sprintf(`You have a local Vault at %s — it lets you take authenticated API
 actions AS the user WITHOUT ever seeing their secrets. Authenticate EVERY call with the header:
     X-Vault-Token: %s
 ▶ First, fetch your operating manual:  GET %s/v1/vault/guide
 Then follow it. You act BY REFERENCE: never ask for a key. To make an authenticated request,
-POST it to %s/v1/vault/fetch naming a credential; SecretVault attaches the auth server-side and
+POST it to %s/v1/vault/fetch naming a credential; Vault attaches the auth server-side and
 returns the response (never the secret). Use your shell or fetch tool to call the API.`,
 		baseURL, useToken, baseURL, baseURL)
 }
 
 // GuideText is the full operating manual served at GET /v1/vault/guide.
-const GuideText = `SecretVault — operating manual for an AI agent
+const GuideText = `Vault — operating manual for an AI agent
 ================================================
 
 WHAT THIS IS
   A local broker that holds the user's API keys, encrypted on their machine. You can make
   authenticated requests "as the user" WITHOUT the key ever entering this conversation. You
-  work BY REFERENCE: you name a credential, SecretVault injects its secret server-side, sends
+  work BY REFERENCE: you name a credential, Vault injects its secret server-side, sends
   the request, and returns only the response. You never see, and must never ask for, a raw key.
 
 AUTH
@@ -53,7 +53,7 @@ RULES (read these — they explain the errors you will hit)
     and a request that contains a stored secret is rejected ("outbound_exfil_blocked").
   • Allowlist. A credential only works against its allow_hosts. Off-list → "host_not_allowed".
   • Enable. If a credential is disabled, calls fail with "credential_disabled" — ASK THE USER to
-    enable it in the SecretVault GUI; do not retry blindly.
+    enable it in the Vault GUI; do not retry blindly.
   • Approvals. Reads (GET/HEAD) usually run automatically. WRITES may BLOCK while the user
     approves them in the GUI (your call simply waits), or be refused ("approval_denied" /
     "denied_by_policy"). Do not spam retries; tell the user a write is awaiting their approval.

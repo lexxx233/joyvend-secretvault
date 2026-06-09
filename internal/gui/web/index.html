@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SecretVault</title>
+<title>Vault</title>
 <style>
   :root{
     --bg:#0c2438; --ink:#eee7d7; --mist:rgba(238,231,215,.72); --mist2:rgba(238,231,215,.42);
@@ -48,7 +48,7 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div><h1>🔐 SecretVault</h1><p class="sub" id="tagline">Your secrets, sealed on the stick.</p></div>
+    <div><h1>🔐 Vault</h1><p class="sub" id="tagline">Your secrets, sealed on the stick.</p></div>
     <button class="ghost hide" id="lockBtn" onclick="lock()">Lock</button>
   </div>
 
@@ -157,12 +157,12 @@ function showLock(){
 }
 function snippetText(tok){
   const b=location.origin;
-  return `You have a local SecretVault at ${b} — it lets you take authenticated API actions AS the user `
+  return `You have a local Vault at ${b} — it lets you take authenticated API actions AS the user `
    +`WITHOUT ever seeing their secrets. Authenticate EVERY call with the header:\n`
    +`    X-Vault-Token: ${tok}\n`
    +`▶ First, fetch your operating manual:  GET ${b}/v1/vault/guide\n`
    +`Then follow it. You act BY REFERENCE: never ask for a key. To make an authenticated request, POST it `
-   +`to ${b}/v1/vault/fetch naming a credential; SecretVault attaches the auth server-side and returns the `
+   +`to ${b}/v1/vault/fetch naming a credential; Vault attaches the auth server-side and returns the `
    +`response (never the secret). Use your shell or fetch tool to call the API.`;
 }
 function showDash(tok){

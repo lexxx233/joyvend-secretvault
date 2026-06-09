@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"mykeep.ai/secretvault/internal/vault"
+	"mykeep.ai/vault/internal/vault"
 )
 
 // pendingApprover realises the "in-RAM pending + GUI decide, synchronous long-poll"

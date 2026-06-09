@@ -1,4 +1,4 @@
-// Package vault is SecretVault's core: the encrypted-JSON credential store, the
+// Package vault is Vault's core: the encrypted-JSON credential store, the
 // auth-injection templates, the hardened egress pipeline (allowlist + resolve-then-pin
 // + reflect-guard), and the hash-chained audit log. See DESIGN.md.
 package vault

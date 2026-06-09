@@ -1,11 +1,11 @@
-# SecretVault — Security Model & Threat Model
+# Vault — Security Model & Threat Model
 
 > **Status: design, no code yet.** This is the threat model the v1 build is designed against.
 > See [`DESIGN.md`](./DESIGN.md) for the architecture. Part of [mykeep](https://mykeep.ai).
 
 ## The honest promise
 
-SecretVault's promise is **not** "your keys are safe." Once the stick is unlocked, an AI agent acts
+Vault's promise is **not** "your keys are safe." Once the stick is unlocked, an AI agent acts
 with your authority — and an agent can be prompt-injected. The honest, defensible promise is:
 
 > **The blast radius is bounded and observable.**

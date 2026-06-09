@@ -1,4 +1,4 @@
-// Package gui serves SecretVault's local web app: a loopback dashboard (opened in
+// Package gui serves Vault's local web app: a loopback dashboard (opened in
 // the browser) that unlocks the vault with a password, then lets the human add and
 // manage credentials, approve writes, and read the audit log. Secret input IS the
 // control plane (DESIGN.md §2), so it lives here, gated by a password-derived session
@@ -19,9 +19,9 @@ import (
 	"sync"
 	"time"
 
-	"mykeep.ai/secretvault/internal/secret"
-	"mykeep.ai/secretvault/internal/server"
-	"mykeep.ai/secretvault/internal/vault"
+	"mykeep.ai/vault/internal/secret"
+	"mykeep.ai/vault/internal/server"
+	"mykeep.ai/vault/internal/vault"
 )
 
 //go:embed web/index.html

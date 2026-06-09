@@ -1,8 +1,8 @@
-// Command secretvault runs the SecretVault broker.
+// Command vault runs the Vault broker.
 //
-//	secretvault            open the local GUI (unlock + manage secrets in the browser)
-//	secretvault gui        same as default
-//	secretvault serve      headless: unlock at launch (env/stdin), serve the API only
+//	vault            open the local GUI (unlock + manage secrets in the browser)
+//	vault gui        same as default
+//	vault serve      headless: unlock at launch (env/stdin), serve the API only
 //
 // The control plane (/api/vault, secret input) is always loopback-only; the use plane
 // (/v1/vault) is loopback-only unless --lan. Pure Go, no CGo.
@@ -21,9 +21,9 @@ import (
 	"syscall"
 	"time"
 
-	"mykeep.ai/secretvault/internal/gui"
-	"mykeep.ai/secretvault/internal/server"
-	"mykeep.ai/secretvault/internal/vault"
+	"mykeep.ai/vault/internal/gui"
+	"mykeep.ai/vault/internal/server"
+	"mykeep.ai/vault/internal/vault"
 )
 
 func main() {
@@ -58,7 +58,7 @@ func runGUI(args []string) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	fmt.Printf("\n🔐  SecretVault GUI: http://%s  (opening your browser…)\n", *addr)
+	fmt.Printf("\n🔐  Vault GUI: http://%s  (opening your browser…)\n", *addr)
 	return gui.New(*path, *addr).Run(ctx)
 }
 
@@ -90,7 +90,7 @@ func runServe(args []string) error {
 	}
 
 	srv := server.New(store, server.Options{EnableLAN: *lan})
-	fmt.Printf("\nSecretVault serving on %s  (LAN use plane: %v)\n", *addr, *lan)
+	fmt.Printf("\nVault serving on %s  (LAN use plane: %v)\n", *addr, *lan)
 	fmt.Printf("  agent (use)  token: %s\n", srv.UseToken())
 	fmt.Printf("  GUI (control) token: %s   ← keep this off the wire\n\n", srv.ControlToken())
 
